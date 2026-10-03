@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pod Address Simulator: how EKS hands out IPs</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div>
+      <h1>🏘️ Pod Address Simulator</h1>
+      <p class="lead">Every pod in Kubernetes needs its own <b>address</b> (an IP) to talk to the world. Your <b>subnet</b> only has so many.
+        Watch how EKS hands them out, and what happens when they run out.</p>
+    </div>
+    <div class="hero-actions">
+      <button type="button" class="btn" data-term="">📖 What do the words mean?</button>
+      <button type="button" class="btn" id="copy-link">🔗 Share</button>
+    </div>
+  </header>
+
+  <section>
+    <h2 class="step"><span>1</span> Pick a story</h2>
+    <div class="stories" id="stories"></div>
+  </section>
+
+  <section class="story-box" id="story-box">
+    <p id="story-text"></p>
+  </section>
+
+  <section>
+    <h2 class="step"><span>2</span> Press play and watch the addresses</h2>
+    <div class="player">
+      <button type="button" id="play" class="play" aria-label="Play">▶</button>
+      <input type="range" id="scrub" min="0" max="100" value="0" step="1" aria-label="Time of day">
+      <span id="clock" class="clock">00:00</span>
+    </div>
+    <div class="legend-row" id="map-legend"></div>
+    <div class="sides">
+      <div class="side a" id="side-a"></div>
+      <div class="side b" id="side-b"></div>
+    </div>
+    <p id="busy" class="muted" style="display:none">⏳ Simulating…</p>
+  </section>
+
+  <section class="card">
+    <h2 class="step"><span>3</span> What happened?</h2>
+    <p id="verdict" class="verdict"></p>
+    <div class="sides">
+      <div class="story a"><h3><span class="tag a">A</span> <span id="title-a"></span></h3><ul id="story-a"></ul></div>
+      <div class="story b"><h3><span class="tag b">B</span> <span id="title-b"></span></h3><ul id="story-b"></ul></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="step"><span>4</span> Over the whole day</h2>
+    <div class="charts">
+      <div id="chart-waiting"></div>
+      <div id="chart-free"></div>
+      <div id="chart-spare"></div>
+      <div id="chart-servers"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <button type="button" class="btn big" id="toggle-settings" aria-expanded="false">⚙️ Change the settings</button>
+    <div id="settings" hidden>
+      <div class="grid2">
+        <div class="config a" id="config-a"></div>
+        <div class="config b" id="config-b"></div>
+      </div>
+      <h3>Apps running in the cluster <button type="button" class="help" data-term="pod">?</button></h3>
+      <div class="table-scroll"><table class="wl-table" id="workloads"></table></div>
+      <div class="row" style="margin-top:10px">
+        <button type="button" class="btn" id="add-workload">+ Add an app</button>
+        <label class="inline">Addresses already used by other things <button type="button" class="help" data-term="other">?</button>
+          <input type="number" data-path="scenario.otherIps" data-type="number" min="0"></label>
+        <label class="inline">Length of the day
+          <select data-path="scenario.durationHours" data-type="number">
+            <option value="4">4 hours</option><option value="6">6 hours</option><option value="12">12 hours</option><option value="24">24 hours</option>
+          </select></label>
+      </div>
+      <details class="log-details">
+        <summary>Show the detailed log (what the CNI did, step by step)</summary>
+        <div class="filters" id="filters"></div>
+        <div class="grid2">
+          <div><h3><span class="tag a">A</span></h3><div class="log" id="log-a"></div></div>
+          <div><h3><span class="tag b">B</span></h3><div class="log" id="log-b"></div></div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="card" id="error" hidden></section>
+
+  <section class="card muted-card" id="assumptions">
+    <h2>How the simulator works</h2>
+    <ul>
+      <li>It pretends to be an EKS cluster using the <b>Amazon VPC CNI</b> (the <code>aws-node</code> pods). Nothing touches a real AWS account.</li>
+      <li>Each server (node) gets network cards (<b>ENIs</b>). Each card holds a fixed number of addresses, based on the real EC2 limits for that server type.</li>
+      <li>The CNI keeps <b>spare addresses</b> ready using <code>WARM_ENI_TARGET</code> (the default), <code>WARM_IP_TARGET</code> / <code>MINIMUM_IP_TARGET</code>, or with <b>prefix delegation</b> <code>WARM_PREFIX_TARGET</code> (blocks of 16).</li>
+      <li>Asking AWS for addresses takes about 5 seconds, and adding a network card about 15 seconds. A freed address rests for 30 seconds before it's reused.</li>
+      <li>Kubernetes puts pods on servers <b>without checking addresses</b>, so pods can get stuck in <code>ContainerCreating</code>. A new server needs one free address for itself, or it can't start.</li>
+      <li>Empty servers are removed after 10 minutes. Addresses are picked at random spots in the subnet, as on AWS, which is why prefix blocks can be hard to find.</li>
+      <li><b>Not included:</b> custom networking / secondary CIDRs, security groups for pods, IPv6, Windows nodes, multiple subnets.</li>
+    </ul>
+  </section>
+</main>
+
+<aside id="glossary" aria-label="Glossary" aria-hidden="true">
+  <div class="g-sticky">
+    <div class="g-head"><h2>📖 Word helper</h2><button type="button" id="glossary-close" class="btn" aria-label="Close">✕</button></div>
+    <input type="text" id="glossary-search" placeholder="Search, e.g. ENI">
+  </div>
+  <div id="glossary-body"></div>
+</aside>
+<div class="map-tip" id="map-tip"></div>
+
+<script src="engine.js"></script>
+<script src="presets.js"></script>
+<script src="glossary.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
