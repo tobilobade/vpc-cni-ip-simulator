@@ -4,7 +4,9 @@
 
 Every pod needs its own IP from your VPC subnet. The Amazon VPC CNI also keeps *spare* IPs ready on every node, so new pods start fast. Those spares can quietly fill a subnet. This simulator shows it as a colour map of every address in the subnet, animated over a day, comparing two CNI setups side by side.
 
-**Run it:** open `index.html`, or host the folder as a static site (e.g. GitHub Pages). No build step, no dependencies.
+**Live:** https://tobilobade.github.io/vpc-cni-ip-simulator/
+
+**Run it locally:** open `index.html`, or host the folder as a static site (e.g. GitHub Pages). No build step, no dependencies.
 
 ## Stories included
 
@@ -39,4 +41,4 @@ It's for building intuition, not exact numbers.
 
 `engine.js` (simulation, no DOM) · `worker.js` (runs it off the main thread) · `presets.js` · `glossary.js` · `charts.js` · `app.js` · `index.html` · `styles.css`
 
-Sister project: [Karpenter Consolidation Simulator](https://github.com/tobilobade/karpenter-consolidation-sim).
+Sister project: [Karpenter Consolidation Simulator](https://github.com/tobilobade/karpenter-consolidation-sim) ([live](https://tobilobade.github.io/karpenter-consolidation-sim/)).
